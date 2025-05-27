@@ -1,0 +1,25 @@
+torch
+torchvision
+numpy
+pandas
+scikit-learn
+matplotlib
+tqdm
+pyyaml
+
+# MLOps Tools
+mlflow
+dvc
+wandb
+
+# API / Deployment
+fastapi
+uvicorn
+
+# Monitoring (optional)
+evidently
+prometheus_client
+
+# Jupyter (for notebooks)
+notebook
+
