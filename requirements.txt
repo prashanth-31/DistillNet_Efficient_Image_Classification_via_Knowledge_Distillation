@@ -17,7 +17,7 @@ mlflow
 dvc
 wandb
 
-# Monitoring (optional)
+# Monitoring 
 evidently
 prometheus_client
 

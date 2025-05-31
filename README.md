@@ -12,14 +12,13 @@ This project implements a complete MLOps pipeline for knowledge distillation wit
 - **Knowledge Distillation**: Transfer knowledge from teacher to student using KL divergence loss
 - **MLOps Tools**: MLflow for experiment tracking and model versioning
 - **Deployment**: 
-  - FastAPI server with a simple web UI for inference
-  - Streamlit interactive application for image classification
+  - Streamlit interactive application for image classification with direct model loading
   - Deployable via Docker and Render
 
 ## 🛠️ Project Structure
 
 ```
-├── api/                  # API server for model deployment
+├── api/                  # API server for model deployment (optional)
 │   ├── main.py           # FastAPI application
 │   └── static/           # Static files for web UI
 ├── app/                  # Streamlit application
@@ -37,10 +36,13 @@ This project implements a complete MLOps pipeline for knowledge distillation wit
 │   ├── train_teacher.py  # Teacher model training script
 │   ├── train_student.py  # Student model training script
 │   └── utils.py          # Utility functions
+├── .github/              # GitHub configuration
+│   └── workflows/        # GitHub Actions workflows
 ├── config.yaml           # Configuration file
-├── Dockerfile            # Docker container definition for API
 ├── Dockerfile.streamlit  # Docker container definition for Streamlit app
 ├── Dockerfile.training   # Docker container definition for training
+├── docker-compose.yml    # Docker Compose configuration for easy deployment
+├── DOCKER_DEPLOYMENT.md  # Docker deployment guide
 ├── render.yaml           # Configuration for Render deployment
 ├── requirements.txt      # Python dependencies
 └── README.md             # Project documentation
@@ -88,33 +90,16 @@ python src/evaluate.py
 
 #### Local Deployment
 
-1. Start the API server:
-```bash
-python api/main.py
-```
-
-2. Open your browser and navigate to `http://localhost:8000` to use the web interface.
-
-3. Start the Streamlit app:
+1. Start the Streamlit app (direct model loading, no API required):
 ```bash
 streamlit run app/streamlit_app.py
 ```
 
-4. Open your browser and navigate to `http://localhost:8501` to use the Streamlit interface.
+2. Open your browser and navigate to `http://localhost:8501` to use the Streamlit interface.
 
 #### Docker Deployment
 
-1. Build and run the API Docker image:
-```bash
-docker build -t distillnet-api .
-docker run -p 8000:8000 distillnet-api
-```
-
-2. Build and run the Streamlit Docker image:
-```bash
-docker build -t distillnet-streamlit -f Dockerfile.streamlit .
-docker run -p 8501:8501 distillnet-streamlit
-```
+For detailed instructions on Docker deployment and setting up GitHub Actions for automated builds, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md).
 
 #### Render Deployment
 

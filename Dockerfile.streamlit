@@ -17,14 +17,16 @@ RUN pip install --no-cache-dir streamlit
 # Copy project files
 COPY . .
 
-# Create model directory
+# Create model directory if it doesn't exist
 RUN mkdir -p models
 
 # Set environment variables
 ENV PYTHONPATH=/app
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 
 # Expose port for Streamlit
 EXPOSE 8501
 
-# Command to run the Streamlit app
+# Command to run the Streamlit app directly
 CMD ["streamlit", "run", "app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"] 
