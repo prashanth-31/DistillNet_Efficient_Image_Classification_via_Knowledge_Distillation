@@ -23,4 +23,4 @@ services:
     envVars:
       - key: DOCKER_USERNAME
         sync: false
-    command: python src/train_student.py 
+    buildCommand: python src/train_student.py 
