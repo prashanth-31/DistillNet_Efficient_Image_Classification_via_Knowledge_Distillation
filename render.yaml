@@ -1,14 +1,20 @@
 services:
   # Web service for the Streamlit app
   - type: web
-    name: distillnet-streamlit
-    env: docker
+    name: distillnet-app
+    runtime: docker
+    imageDetails:
+      registry: docker.io
+      username: ${DOCKER_USERNAME}
+      imageName: distillnet-streamlit
+      tag: latest
+    region: oregon
     plan: free
-    image:
-      url: ${DOCKER_USERNAME}/distillnet-streamlit:latest
     envVars:
       - key: DOCKER_USERNAME
         sync: false
+      - key: PORT
+        value: 8501
     healthCheckPath: /
     autoDeploy: true
 
