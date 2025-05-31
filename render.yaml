@@ -1,0 +1,36 @@
+services:
+  # Web service for the API
+  - type: web
+    name: distillnet-api
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: true
+
+  # Web service for the Streamlit app
+  - type: web
+    name: distillnet-streamlit
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.streamlit
+    dockerContext: .
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: true
+
+  # Background worker for training (optional)
+  - type: worker
+    name: distillnet-training
+    env: docker
+    plan: free
+    dockerfilePath: ./Dockerfile.training
+    dockerContext: .
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: true
+    command: python src/train_student.py 

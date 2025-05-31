@@ -1,0 +1,50 @@
+# DistillNet Configuration
+
+# Dataset Configuration
+dataset:
+  name: "cifar10"
+  data_dir: "./data"
+  batch_size: 128
+  num_workers: 4
+
+# Teacher Model Configuration
+teacher:
+  model: "resnet50"  # Using ResNet50 as requested
+  pretrained: false
+  epochs: 50
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  scheduler_step_size: 20
+  scheduler_gamma: 0.1
+  save_path: "./models/teacher_model.pth"
+
+# Student Model Configuration
+student:
+  model: "resnet18"  # Using ResNet18 as the student model
+  pretrained: false
+  epochs: 50
+  learning_rate: 0.01
+  momentum: 0.9
+  weight_decay: 0.0005
+  scheduler_step_size: 20
+  scheduler_gamma: 0.1
+  save_path: "./models/student_model.pth"
+
+# Distillation Configuration
+distillation:
+  temperature: 4.0
+  alpha: 0.5  # Weight for distillation loss (soft targets)
+  beta: 0.5   # Weight for regular cross-entropy loss (hard targets)
+
+# MLflow Configuration
+mlflow:
+  tracking_uri: "./mlruns"
+  experiment_name: "knowledge_distillation"
+  register_model: true
+
+# API Configuration
+api:
+  host: "0.0.0.0"
+  port: 8000
+  model_path: "./models/student_model.pth" 
