@@ -1,4 +1,4 @@
-name: Build & Push Docker Image
+name: Build & Push Docker Image + Deploy to Render
 
 on:
   push:
@@ -34,8 +34,7 @@ jobs:
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-streamlit:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-streamlit:buildcache,mode=max
           
-      # Temporarily commented out until Render deploy hook is available
-      # - name: Trigger Render Deployment
-      #   run: |
-      #     curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
-      #   if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') 
+      - name: Trigger Render Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+        if: success() && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') 
