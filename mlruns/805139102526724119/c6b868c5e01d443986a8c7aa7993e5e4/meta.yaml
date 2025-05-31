@@ -1,0 +1,15 @@
+artifact_uri: file:///D:/DistillNet_Efficient_Image_Classification_via_Knowledge_Distillation/mlruns/805139102526724119/c6b868c5e01d443986a8c7aa7993e5e4/artifacts
+end_time: 1748424633496
+entry_point_name: ''
+experiment_id: '805139102526724119'
+lifecycle_stage: active
+run_id: c6b868c5e01d443986a8c7aa7993e5e4
+run_name: teacher_resnet50
+run_uuid: c6b868c5e01d443986a8c7aa7993e5e4
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748424344152
+status: 4
+tags: []
+user_id: prash
