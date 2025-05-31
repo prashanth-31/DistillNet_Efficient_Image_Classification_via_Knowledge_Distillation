@@ -1,0 +1,15 @@
+artifact_uri: file:///D:/DistillNet_Efficient_Image_Classification_via_Knowledge_Distillation/src/mlruns/0/1b219c49d7854c5db096df79515010aa/artifacts
+end_time: 1748350922200
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+run_id: 1b219c49d7854c5db096df79515010aa
+run_name: bold-gnu-981
+run_uuid: 1b219c49d7854c5db096df79515010aa
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1748350639584
+status: 4
+tags: []
+user_id: prash
