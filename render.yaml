@@ -4,7 +4,6 @@ services:
     name: distillnet-streamlit
     env: docker
     plan: free
-    dockerCommand: streamlit run app/streamlit_app.py
     image:
       url: ${DOCKER_USERNAME}/distillnet-streamlit:latest
     envVars:
