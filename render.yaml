@@ -4,11 +4,14 @@ services:
     name: distillnet-streamlit
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile.streamlit
-    dockerContext: .
+    dockerCommand: streamlit run app/streamlit_app.py
+    image:
+      url: ${DOCKER_USERNAME}/distillnet-streamlit:latest
     envVars:
-      - key: PYTHONUNBUFFERED
-        value: true
+      - key: DOCKER_USERNAME
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
 
   # Background worker for training (optional)
   - type: worker
