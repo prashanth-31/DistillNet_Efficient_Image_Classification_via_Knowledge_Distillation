@@ -102,32 +102,70 @@ def load_models():
         # Check if paths are relative and convert to absolute if needed
         if not os.path.isabs(student_path):
             student_path = os.path.abspath(os.path.join(os.path.dirname(config_path), student_path))
+            # Also try the direct /app path since Docker container uses /app as WORKDIR
+            if not os.path.exists(student_path):
+                student_path = os.path.join("/app", config["student"]["save_path"])
         
         if not os.path.isabs(teacher_path):
             teacher_path = os.path.abspath(os.path.join(os.path.dirname(config_path), teacher_path))
+            # Also try the direct /app path since Docker container uses /app as WORKDIR
+            if not os.path.exists(teacher_path):
+                teacher_path = os.path.join("/app", config["teacher"]["save_path"])
             
         # Check if model files exist
         if not os.path.exists(student_path):
-            st.error(f"Student model file not found: {student_path}")
-            return None, device
+            st.warning(f"Student model file not found: {student_path}. Using pretrained model instead.")
+            student_model = get_student_model(
+                model_name=config["student"]["model"], 
+                num_classes=10,
+                pretrained=True
+            )
+        else:
+            student_model = load_model(student_model, student_path)
             
         if not os.path.exists(teacher_path):
-            st.error(f"Teacher model file not found: {teacher_path}")
-            return None, device
+            st.warning(f"Teacher model file not found: {teacher_path}. Using pretrained model instead.")
+            teacher_model = get_teacher_model(
+                model_name=config["teacher"]["model"],
+                num_classes=10,
+                pretrained=True
+            )
+        else:
+            teacher_model = load_model(teacher_model, teacher_path)
         
-        student_model = load_model(student_model, student_path)
         student_model = student_model.to(device)
         student_model.eval()
         
-        teacher_model = load_model(teacher_model, teacher_path)
         teacher_model = teacher_model.to(device)
         teacher_model.eval()
         
         return {"student": student_model, "teacher": teacher_model}, device
     except Exception as e:
         st.error(f"Error loading models: {str(e)}")
-        st.info("Please ensure the model files exist in the correct location as specified in config.yaml")
-        return None, device
+        st.info("Falling back to pretrained models...")
+        
+        # Fall back to pretrained models
+        try:
+            student_model = get_student_model(
+                model_name=config["student"]["model"], 
+                num_classes=10,
+                pretrained=True
+            )
+            student_model = student_model.to(device)
+            student_model.eval()
+            
+            teacher_model = get_teacher_model(
+                model_name=config["teacher"]["model"],
+                num_classes=10,
+                pretrained=True
+            )
+            teacher_model = teacher_model.to(device)
+            teacher_model.eval()
+            
+            return {"student": student_model, "teacher": teacher_model}, device
+        except Exception as e2:
+            st.error(f"Error loading pretrained models: {str(e2)}")
+            return None, device
 
 def predict_image(image, model, device, preprocess_options=None):
     """Make prediction on an image using the model"""
