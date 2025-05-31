@@ -18,9 +18,9 @@ services:
     name: distillnet-training
     env: docker
     plan: free
-    dockerfilePath: ./Dockerfile.training
-    dockerContext: .
+    image:
+      url: ${DOCKER_USERNAME}/distillnet-training:latest
     envVars:
-      - key: PYTHONUNBUFFERED
-        value: true
+      - key: DOCKER_USERNAME
+        sync: false
     command: python src/train_student.py 
