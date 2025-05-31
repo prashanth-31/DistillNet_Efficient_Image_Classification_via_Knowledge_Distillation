@@ -20,6 +20,29 @@ COPY . .
 # Create model directory if it doesn't exist
 RUN mkdir -p models
 
+# Create a startup script that will generate model files if they don't exist
+RUN echo '#!/bin/bash\n\
+if [ ! -f /app/models/teacher_model.pth ] || [ ! -f /app/models/student_model.pth ]; then\n\
+  echo "Generating model files..."\n\
+  python -c "import torch; import torchvision.models as models; \
+  # Create teacher model \
+  teacher = models.resnet50(pretrained=False); \
+  teacher.fc = torch.nn.Linear(teacher.fc.in_features, 10); \
+  torch.save(teacher.state_dict(), \"/app/models/teacher_model.pth\"); \
+  # Create student model \
+  student = models.resnet18(pretrained=False); \
+  student.fc = torch.nn.Linear(student.fc.in_features, 10); \
+  torch.save(student.state_dict(), \"/app/models/student_model.pth\")"\n\
+  echo "Model files generated successfully."\n\
+fi\n\
+\n\
+# Run the Streamlit app\n\
+exec streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0\n\
+' > /app/startup.sh
+
+# Make startup script executable
+RUN chmod +x /app/startup.sh
+
 # Set environment variables
 ENV PYTHONPATH=/app
 ENV STREAMLIT_SERVER_PORT=8501
@@ -28,5 +51,5 @@ ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 # Expose port for Streamlit
 EXPOSE 8501
 
-# Command to run the Streamlit app directly
-CMD ["streamlit", "run", "app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"] 
+# Use the startup script as entrypoint
+CMD ["/app/startup.sh"] 
