@@ -3,11 +3,7 @@ services:
   - type: web
     name: distillnet-app
     runtime: docker
-    imageDetails:
-      registry: docker.io
-      username: ${DOCKER_USERNAME}
-      imageName: distillnet-streamlit
-      tag: latest
+    image: docker.io/${DOCKER_USERNAME}/distillnet-streamlit:latest
     region: oregon
     plan: free
     envVars:
@@ -16,7 +12,7 @@ services:
       - key: PORT
         value: 8501
     healthCheckPath: /
-    autoDeploy: true
+    autoDeploy: false
 
   # Background worker for training (optional)
   - type: worker

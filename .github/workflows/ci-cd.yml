@@ -1,11 +1,10 @@
-name: Build and Push Docker Image
+name: CI/CD Pipeline
 
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  # Allow manual trigger
   workflow_dispatch:
 
 jobs:
@@ -35,12 +34,7 @@ jobs:
           cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-streamlit:buildcache
           cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-streamlit:buildcache,mode=max
           
-      - name: Build and push Training image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          file: ./Dockerfile.training
-          push: true
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/distillnet-training:latest
-          cache-from: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-training:buildcache
-          cache-to: type=registry,ref=${{ secrets.DOCKERHUB_USERNAME }}/distillnet-training:buildcache,mode=max 
+      - name: Trigger Render Deployment
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        if: success() && github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' 

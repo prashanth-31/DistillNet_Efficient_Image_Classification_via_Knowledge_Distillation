@@ -1,6 +1,6 @@
-# Docker Deployment Guide for DistillNet
+# Docker and Render Deployment Guide for DistillNet
 
-This guide explains how to deploy DistillNet using Docker and how to set up automated builds using GitHub Actions.
+This guide explains how to deploy DistillNet using Docker locally and how to set up automated builds and deployment using GitHub Actions and Render.
 
 ## Local Docker Deployment
 
@@ -22,9 +22,9 @@ docker build -t distillnet-streamlit -f Dockerfile.streamlit .
 docker run -p 8501:8501 distillnet-streamlit
 ```
 
-## Automated Builds with GitHub Actions
+## Automated CI/CD Pipeline
 
-This project includes a GitHub Actions workflow that automatically builds and pushes Docker images to Docker Hub whenever changes are pushed to the main branch.
+This project includes a GitHub Actions workflow that automatically builds and pushes Docker images to Docker Hub and triggers deployment on Render whenever changes are pushed to the main branch.
 
 ### Setup Instructions
 
@@ -44,9 +44,30 @@ This project includes a GitHub Actions workflow that automatically builds and pu
      - `DOCKERHUB_USERNAME`: Your Docker Hub username
      - `DOCKERHUB_TOKEN`: The access token you created
 
-4. **Push to GitHub**:
+4. **Set Up Render Deployment**:
+   - Create an account on [Render](https://render.com/)
+   - Create a new Web Service
+   - Connect to your GitHub repository
+   - Set up environment variables:
+     - `DOCKER_USERNAME`: Your Docker Hub username
+   - Get your deploy hook URL from Settings > Deploy Hooks
+   - Add the deploy hook URL as a GitHub secret:
+     - `RENDER_DEPLOY_HOOK_URL`: The Render deploy hook URL
+
+5. **Push to GitHub**:
    - The workflow will automatically trigger when you push to the main branch
    - You can also manually trigger it from the "Actions" tab in your GitHub repository
+
+### CI/CD Pipeline Flow
+
+1. **CI (Continuous Integration)**: 
+   - GitHub Actions builds Docker images when code is pushed
+   - Images are pushed to Docker Hub
+
+2. **CD (Continuous Deployment)**:
+   - GitHub Actions triggers Render deploy hook
+   - Render pulls the latest image from Docker Hub
+   - The application is deployed on Render's infrastructure
 
 ### Docker Images
 
@@ -60,7 +81,7 @@ The workflow builds and pushes two Docker images:
 
 ### Running the Docker Images
 
-After the images are pushed to Docker Hub, you can run them with:
+After the images are pushed to Docker Hub, you can run them locally with:
 
 ```bash
 docker run -p 8501:8501 your-username/distillnet-streamlit:latest
