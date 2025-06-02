@@ -13,7 +13,7 @@ This project implements a complete MLOps pipeline for knowledge distillation wit
 - **MLOps Tools**: MLflow for experiment tracking and model versioning
 - **Deployment**: 
   - Streamlit interactive application for image classification with direct model loading
-  - Deployable via Docker and Render
+  - Deployable via Docker and AWS Elastic Beanstalk
 
 ## 🛠️ Project Structure
 
@@ -37,13 +37,14 @@ This project implements a complete MLOps pipeline for knowledge distillation wit
 │   ├── train_student.py  # Student model training script
 │   └── utils.py          # Utility functions
 ├── .github/              # GitHub configuration
-│   └── workflows/        # GitHub Actions workflows
+│   ├── workflows/        # GitHub Actions workflows
+│   │   ├── deploy-to-aws.yml  # AWS Elastic Beanstalk deployment workflow
+│   │   └── TROUBLESHOOTING.md # Troubleshooting guide for deployment
 ├── config.yaml           # Configuration file
 ├── Dockerfile.streamlit  # Docker container definition for Streamlit app
 ├── Dockerfile.training   # Docker container definition for training
 ├── docker-compose.yml    # Docker Compose configuration for easy deployment
-├── DOCKER_DEPLOYMENT.md  # Docker deployment guide
-├── render.yaml           # Configuration for Render deployment
+├── AWS_DEPLOYMENT.md     # AWS deployment guide
 ├── requirements.txt      # Python dependencies
 └── README.md             # Project documentation
 ```
@@ -99,19 +100,11 @@ streamlit run app/streamlit_app.py
 
 #### Docker Deployment
 
-For detailed instructions on Docker deployment and setting up GitHub Actions for automated builds, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md).
+For detailed instructions on Docker deployment, see [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md).
 
-#### Render Deployment
+#### AWS Elastic Beanstalk Deployment
 
-This project includes configuration for deployment on [Render](https://render.com/):
-
-1. Push your code to a GitHub repository.
-
-2. Log in to Render and create a new "Blueprint" instance.
-
-3. Connect your GitHub repository and Render will automatically detect the `render.yaml` configuration.
-
-4. Deploy the services defined in the configuration.
+For detailed instructions on AWS Elastic Beanstalk deployment, see [AWS_DEPLOYMENT.md](AWS_DEPLOYMENT.md).
 
 ## 📊 MLflow Tracking
 
@@ -153,3 +146,38 @@ where:
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## CI/CD with GitHub Actions
+
+This project includes a CI/CD pipeline using GitHub Actions to automatically deploy the application to AWS Elastic Beanstalk when changes are pushed to the main branch.
+
+### Setting up GitHub Secrets
+
+To enable the CI/CD pipeline, you need to add the following secrets to your GitHub repository:
+
+1. Go to your GitHub repository → Settings → Secrets and variables → Actions
+2. Add the following repository secrets:
+
+| Secret Name | Description |
+|-------------|-------------|
+| `AWS_ACCESS_KEY_ID` | Your AWS access key with permissions for ECR and Elastic Beanstalk |
+| `AWS_SECRET_ACCESS_KEY` | Your AWS secret access key |
+| `AWS_REGION` | The AWS region where you want to deploy (e.g., `us-east-1`) |
+
+### Required AWS Permissions
+
+The AWS user associated with the access keys needs the following permissions:
+- AmazonECR-FullAccess
+- AWSElasticBeanstalkFullAccess
+
+### Workflow Details
+
+The GitHub Actions workflow performs the following steps:
+1. Builds the Docker image using `Dockerfile.streamlit`
+2. Pushes the image to Amazon ECR
+3. Creates a deployment package for Elastic Beanstalk
+4. Deploys the application to Elastic Beanstalk
+
+### Monitoring Deployments
+
+You can monitor the deployment status in the Actions tab of your GitHub repository.

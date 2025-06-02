@@ -96,42 +96,58 @@ def load_models():
     )
     
     try:
-        student_path = config["student"]["save_path"]
-        teacher_path = config["teacher"]["save_path"]
+        # Define possible model paths for different deployment environments
+        student_paths = [
+            # Docker/AWS path (highest priority)
+            os.path.join("/app", "models", "student_model.pth"),
+            # Path from config
+            config["student"]["save_path"],
+            # Absolute path based on config
+            os.path.abspath(os.path.join(os.path.dirname(config_path), config["student"]["save_path"]))
+        ]
         
-        # Check if paths are relative and convert to absolute if needed
-        if not os.path.isabs(student_path):
-            student_path = os.path.abspath(os.path.join(os.path.dirname(config_path), student_path))
-            # Also try the direct /app path since Docker container uses /app as WORKDIR
-            if not os.path.exists(student_path):
-                student_path = os.path.join("/app", config["student"]["save_path"])
+        teacher_paths = [
+            # Docker/AWS path (highest priority)
+            os.path.join("/app", "models", "teacher_model.pth"),
+            # Path from config
+            config["teacher"]["save_path"],
+            # Absolute path based on config
+            os.path.abspath(os.path.join(os.path.dirname(config_path), config["teacher"]["save_path"]))
+        ]
         
-        if not os.path.isabs(teacher_path):
-            teacher_path = os.path.abspath(os.path.join(os.path.dirname(config_path), teacher_path))
-            # Also try the direct /app path since Docker container uses /app as WORKDIR
-            if not os.path.exists(teacher_path):
-                teacher_path = os.path.join("/app", config["teacher"]["save_path"])
-            
-        # Check if model files exist
-        if not os.path.exists(student_path):
-            st.warning(f"Student model file not found: {student_path}. Using pretrained model instead.")
+        # Try loading student model from different paths
+        student_loaded = False
+        for path in student_paths:
+            if os.path.exists(path):
+                student_model = load_model(student_model, path)
+                st.success(f"Student model loaded from: {path}")
+                student_loaded = True
+                break
+        
+        if not student_loaded:
+            st.warning("Student model file not found. Using pretrained model instead.")
             student_model = get_student_model(
                 model_name=config["student"]["model"], 
                 num_classes=10,
                 pretrained=True
             )
-        else:
-            student_model = load_model(student_model, student_path)
             
-        if not os.path.exists(teacher_path):
-            st.warning(f"Teacher model file not found: {teacher_path}. Using pretrained model instead.")
+        # Try loading teacher model from different paths
+        teacher_loaded = False
+        for path in teacher_paths:
+            if os.path.exists(path):
+                teacher_model = load_model(teacher_model, path)
+                st.success(f"Teacher model loaded from: {path}")
+                teacher_loaded = True
+                break
+        
+        if not teacher_loaded:
+            st.warning("Teacher model file not found. Using pretrained model instead.")
             teacher_model = get_teacher_model(
                 model_name=config["teacher"]["model"],
                 num_classes=10,
                 pretrained=True
             )
-        else:
-            teacher_model = load_model(teacher_model, teacher_path)
         
         student_model = student_model.to(device)
         student_model.eval()

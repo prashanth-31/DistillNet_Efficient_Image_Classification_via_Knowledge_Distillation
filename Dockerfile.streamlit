@@ -14,11 +14,14 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir streamlit
 
+# Create model directory
+RUN mkdir -p /app/models
+
 # Copy project files
 COPY . .
 
-# Create model directory if it doesn't exist
-RUN mkdir -p models
+# Copy models if they exist locally
+COPY app/models/*.pth /app/models/ 2>/dev/null || :
 
 # Create a startup script that will generate model files if they don't exist
 RUN echo '#!/bin/bash\n\

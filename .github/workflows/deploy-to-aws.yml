@@ -1,0 +1,197 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for proper versioning
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+          cache: 'pip'  # Cache pip dependencies
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install awsebcli
+          pip install awscli
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Create ECR repository if it doesn't exist
+        run: |
+          aws ecr describe-repositories --repository-names distillnet || aws ecr create-repository --repository-name distillnet
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Build and tag Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: distillnet
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f Dockerfile.streamlit .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Create Dockerrun.aws.json
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: distillnet
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cat > Dockerrun.aws.json << EOF
+          {
+            "AWSEBDockerrunVersion": "1",
+            "Image": {
+              "Name": "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+              "Update": "true"
+            },
+            "Ports": [
+              {
+                "ContainerPort": "8501",
+                "HostPort": "80"
+              }
+            ],
+            "Logging": "/app/logs"
+          }
+          EOF
+          
+      - name: Generate deployment package
+        run: |
+          # Create .ebextensions directory for configuration
+          mkdir -p .ebextensions
+          
+          # Create Streamlit configuration
+          cat > .ebextensions/01_streamlit.config << EOF
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              PYTHONPATH: "/app"
+              STREAMLIT_SERVER_PORT: "8501"
+              STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
+          EOF
+          
+          # Create nginx configuration to proxy requests to Streamlit
+          cat > .ebextensions/02_nginx.config << EOF
+          files:
+            "/etc/nginx/conf.d/proxy.conf":
+              mode: "000644"
+              owner: root
+              group: root
+              content: |
+                upstream streamlit {
+                  server 127.0.0.1:8501;
+                }
+                
+                server {
+                  listen 80;
+                
+                  location / {
+                    proxy_pass http://streamlit;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header Host \$http_host;
+                    proxy_set_header X-NginX-Proxy true;
+                    
+                    # Specific for websockets
+                    proxy_http_version 1.1;
+                    proxy_set_header Upgrade \$http_upgrade;
+                    proxy_set_header Connection "upgrade";
+                    proxy_read_timeout 86400;
+                  }
+                }
+          
+            "/opt/elasticbeanstalk/hooks/appdeploy/post/99_restart_nginx.sh":
+              mode: "000755"
+              owner: root
+              group: root
+              content: |
+                #!/bin/bash
+                service nginx restart
+          EOF
+          
+          # Create CloudWatch Logs configuration
+          cat > .ebextensions/03_logs.config << EOF
+          files:
+            "/opt/elasticbeanstalk/tasks/taillogs.d/streamlit.conf":
+              mode: "000644"
+              owner: root
+              group: root
+              content: |
+                /app/logs/streamlit.log
+          EOF
+          
+          # Create health check configuration
+          cat > .ebextensions/04_healthcheck.config << EOF
+          option_settings:
+            aws:elasticbeanstalk:application:
+              Application Healthcheck URL: /
+            aws:elasticbeanstalk:environment:process:default:
+              HealthCheckPath: /
+              Port: '80'
+              Protocol: HTTP
+          EOF
+          
+          # Create zip file with all required files
+          zip -r deploy.zip Dockerrun.aws.json .ebextensions
+          
+      - name: Initialize EB CLI
+        run: |
+          mkdir -p ~/.aws
+          echo "[profile eb-cli]" > ~/.aws/config
+          echo "aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" >> ~/.aws/config
+          echo "aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" >> ~/.aws/config
+          echo "region=${{ secrets.AWS_REGION }}" >> ~/.aws/config
+          
+          eb init distillnet --region ${{ secrets.AWS_REGION }} --platform docker
+          
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          # Check if environment exists
+          if eb status distillnet-env 2>/dev/null; then
+            echo "Environment exists, deploying updates..."
+            eb deploy distillnet-env --staged
+          else
+            echo "Creating new environment..."
+            eb create distillnet-env \
+              --cname distillnet-${{ github.sha }} \
+              --elb-type application \
+              --timeout 20 \
+              --instance-types t2.small \
+              --platform-version "Docker running on 64bit Amazon Linux 2" \
+              --version-label distillnet-${{ github.sha }}
+          fi
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_REGION }}
+          
+      - name: Post-deployment info
+        run: |
+          echo "Application deployed successfully to Elastic Beanstalk"
+          CNAME=$(eb status distillnet-env | grep CNAME | awk '{print $2}')
+          echo "Environment URL: http://$CNAME"
+          echo "::set-output name=url::http://$CNAME" 
