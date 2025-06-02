@@ -34,6 +34,74 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Create required IAM roles
+        run: |
+          # Check if the instance profile exists
+          if ! aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role 2>/dev/null; then
+            echo "Creating required IAM roles for Elastic Beanstalk..."
+            
+            # Create the EC2 role trust policy
+            cat > ec2-trust-policy.json << EOF
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+            EOF
+            
+            # Create the EC2 role
+            aws iam create-role --role-name aws-elasticbeanstalk-ec2-role --assume-role-policy-document file://ec2-trust-policy.json
+            
+            # Attach necessary policies
+            aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
+            aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonECR-FullAccess
+            aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+            
+            # Create the instance profile
+            aws iam create-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
+            
+            # Add the role to the instance profile
+            aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role
+            
+            # Create the service role trust policy
+            cat > service-trust-policy.json << EOF
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "elasticbeanstalk.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+            EOF
+            
+            # Create the service role
+            aws iam create-role --role-name aws-elasticbeanstalk-service-role --assume-role-policy-document file://service-trust-policy.json
+            
+            # Attach necessary policies to the service role
+            aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
+            aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
+            
+            echo "IAM roles created successfully"
+            
+            # Wait a bit for IAM changes to propagate
+            echo "Waiting for IAM changes to propagate..."
+            sleep 20
+          else
+            echo "IAM roles already exist"
+          fi
           
       - name: Login to Amazon ECR
         id: login-ecr
@@ -172,6 +240,15 @@ jobs:
               UnhealthyThresholdCount: 5
           EOF
           
+          # Create IAM configuration
+          cat > .ebextensions/05_iam.config << EOF
+          option_settings:
+            aws:autoscaling:launchconfiguration:
+              IamInstanceProfile: aws-elasticbeanstalk-ec2-role
+            aws:elasticbeanstalk:environment:
+              ServiceRole: aws-elasticbeanstalk-service-role
+          EOF
+          
           # Create zip file with all required files
           zip -r deploy.zip Dockerrun.aws.json .ebextensions
           
@@ -201,7 +278,9 @@ jobs:
               --elb-type application \
               --timeout 20 \
               --instance-type t2.small \
-              --platform docker
+              --platform docker \
+              --service-role aws-elasticbeanstalk-service-role \
+              --instance-profile aws-elasticbeanstalk-ec2-role
           fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

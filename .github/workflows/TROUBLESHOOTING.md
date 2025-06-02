@@ -50,19 +50,45 @@ if [ ! -f /app/models/model.pth ]; then\n\
 fi' > /app/startup.sh
 ```
 
-### 3. Elastic Beanstalk CLI Argument Error
+### 3. Missing IAM Instance Profile Error
+
+**Error message:**
+```
+ERROR   The instance profile aws-elasticbeanstalk-ec2-role associated with the environment does not exist.
+ERROR   Failed to launch environment.
+```
+
+**Solution:**
+Elastic Beanstalk requires specific IAM roles to function properly. When you see this error:
+
+1. The workflow now automatically creates these roles if they don't exist:
+   - `aws-elasticbeanstalk-ec2-role`: Instance profile for EC2 instances
+   - `aws-elasticbeanstalk-service-role`: Service role for Elastic Beanstalk
+
+2. If you're deploying manually or still encounter this error:
+   ```bash
+   # Create EC2 role and instance profile
+   aws iam create-role --role-name aws-elasticbeanstalk-ec2-role --assume-role-policy-document file://ec2-trust-policy.json
+   aws iam create-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
+   aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role
+   
+   # Create service role
+   aws iam create-role --role-name aws-elasticbeanstalk-service-role --assume-role-policy-document file://service-trust-policy.json
+   ```
+
+3. Ensure your IAM user has permissions to create and manage IAM roles
+4. Specify these roles explicitly when creating your environment:
+   ```bash
+   eb create distillnet-env --service-role aws-elasticbeanstalk-service-role --instance-profile aws-elasticbeanstalk-ec2-role
+   ```
+
+### 4. Elastic Beanstalk CLI Argument Error
 
 **Error message:**
 ```
 ERROR: NotFoundError - Environment "distillnet-env" not Found.
 Creating new environment...
 usage: eb create <environment_name> [options ...]
-eb: error: unrecognized arguments: --platform-version Docker running on 64bit Amazon Linux 2
-```
-
-or
-
-```
 eb: error: unrecognized arguments: --version-label distillnet-80e678a1
 ```
 
@@ -84,7 +110,7 @@ The Elastic Beanstalk CLI can be very particular about argument formats and vers
 
 **Note:** Different versions of the EB CLI may accept different argument formats. The simplified command above should work with most versions.
 
-### 4. Insufficient IAM Permissions
+### 5. Insufficient IAM Permissions
 
 **Error message:**
 ```
@@ -98,7 +124,7 @@ Ensure your IAM user has the required permissions. You can attach the following 
 
 For a more secure approach, create a custom policy with the minimum required permissions as described in the [AWS_DEPLOYMENT.md](../../AWS_DEPLOYMENT.md) file.
 
-### 5. Elastic Beanstalk Environment Creation Fails
+### 6. Elastic Beanstalk Environment Creation Fails
 
 **Error message:**
 ```
@@ -118,7 +144,7 @@ To get detailed error information:
 aws elasticbeanstalk describe-events --environment-name distillnet-env --region <your-region>
 ```
 
-### 6. Docker Build Fails
+### 7. Docker Build Fails
 
 **Error message:**
 ```
@@ -134,7 +160,7 @@ failed to build: error building: failed to compute cache key: failed to calculat
 3. Try clearing the GitHub Actions cache by adding a unique identifier to the workflow file
 4. Check for disk space issues in the GitHub runner
 
-### 7. Missing GitHub Secrets
+### 8. Missing GitHub Secrets
 
 **Error message:**
 ```
@@ -151,7 +177,7 @@ To check if secrets are properly set (without revealing their values):
 1. Go to your GitHub repository → Settings → Secrets and variables → Actions
 2. Confirm all three secrets are listed
 
-### 8. Model Files Not Found in Deployment
+### 9. Model Files Not Found in Deployment
 
 **Error message:**
 ```
@@ -169,7 +195,7 @@ Student model file not found. Using pretrained model instead.
    - Add a script to download pretrained models if they don't exist
    - Use Git LFS for large file storage
 
-### 9. Elastic Beanstalk Health Check Failures
+### 10. Elastic Beanstalk Health Check Failures
 
 **Error message:**
 ```
@@ -193,7 +219,7 @@ Health check failed: Elastic Load Balancer health check failure
        UnhealthyThresholdCount: 5
    ```
 
-### 10. Deployment Timeout
+### 11. Deployment Timeout
 
 **Error message:**
 ```
@@ -208,7 +234,7 @@ ERROR: Timed out while waiting for environment to reach state Ready
 2. Check if the application is taking too long to start
 3. Verify that your instance type has sufficient resources
 
-### 11. WebSocket Connection Issues
+### 12. WebSocket Connection Issues
 
 **Error message:**
 Users report that the Streamlit app keeps disconnecting or reloading.
@@ -222,7 +248,7 @@ proxy_set_header Connection "upgrade";
 proxy_read_timeout 86400;
 ```
 
-### 12. HTTPS/SSL Configuration
+### 13. HTTPS/SSL Configuration
 
 **Issue:**
 Need to enable HTTPS for your application.
