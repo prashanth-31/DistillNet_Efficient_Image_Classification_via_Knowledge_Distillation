@@ -46,13 +46,27 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       
+      - name: Check for model files
+        id: check-models
+        run: |
+          if [ -d "app/models" ] && [ "$(ls -A app/models)" ]; then
+            echo "Models directory exists and contains files"
+            echo "models_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "Models directory does not exist or is empty"
+            echo "models_exist=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Build and tag Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: distillnet
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f Dockerfile.streamlit .
+          
+          echo "Pushing Docker image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
@@ -153,6 +167,9 @@ jobs:
               HealthCheckPath: /
               Port: '80'
               Protocol: HTTP
+              HealthCheckTimeout: 30
+              HealthyThresholdCount: 2
+              UnhealthyThresholdCount: 5
           EOF
           
           # Create zip file with all required files
@@ -194,4 +211,4 @@ jobs:
           echo "Application deployed successfully to Elastic Beanstalk"
           CNAME=$(eb status distillnet-env | grep CNAME | awk '{print $2}')
           echo "Environment URL: http://$CNAME"
-          echo "::set-output name=url::http://$CNAME" 
+          echo "url=http://$CNAME" >> $GITHUB_OUTPUT 

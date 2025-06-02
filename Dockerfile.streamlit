@@ -20,9 +20,6 @@ RUN mkdir -p /app/models
 # Copy project files
 COPY . .
 
-# Copy models if they exist locally
-COPY app/models/*.pth /app/models/ 2>/dev/null || :
-
 # Create a startup script that will generate model files if they don't exist
 RUN echo '#!/bin/bash\n\
 if [ ! -f /app/models/teacher_model.pth ] || [ ! -f /app/models/student_model.pth ]; then\n\

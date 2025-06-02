@@ -20,7 +20,37 @@ The workflow is now configured to automatically create the ECR repository if it 
    aws ecr create-repository --repository-name distillnet --region <your-region>
    ```
 
-### 2. Insufficient IAM Permissions
+### 2. Docker Build Fails with COPY Command Error
+
+**Error message:**
+```
+ERROR: failed to solve: failed to compute cache key: failed to calculate checksum of ref XXXXXXXXXXXX::XXXXXXXXXXXX: "/||": not found
+```
+
+**Solution:**
+This error occurs when using shell redirection or logical operators in Docker COPY commands. Docker doesn't support shell features like `2>/dev/null` or `||` in COPY instructions.
+
+1. Remove any shell redirection or logical operators from COPY commands in your Dockerfile
+2. For conditional file copying, use multi-stage builds or handle the logic in a script that runs at container startup
+3. If trying to copy model files that may not exist, make sure the directory structure exists first and handle missing files in the startup script
+
+Example of correct approach:
+```dockerfile
+# Create the directory first
+RUN mkdir -p /app/models
+
+# Copy project files (models will be included if they exist)
+COPY . .
+
+# Handle missing models in startup script
+RUN echo '#!/bin/bash\n\
+if [ ! -f /app/models/model.pth ]; then\n\
+  echo "Generating model files..."\n\
+  # Generate or download models\n\
+fi' > /app/startup.sh
+```
+
+### 3. Insufficient IAM Permissions
 
 **Error message:**
 ```
@@ -34,7 +64,7 @@ Ensure your IAM user has the required permissions. You can attach the following 
 
 For a more secure approach, create a custom policy with the minimum required permissions as described in the [AWS_DEPLOYMENT.md](../../AWS_DEPLOYMENT.md) file.
 
-### 3. Elastic Beanstalk Environment Creation Fails
+### 4. Elastic Beanstalk Environment Creation Fails
 
 **Error message:**
 ```
@@ -54,7 +84,7 @@ To get detailed error information:
 aws elasticbeanstalk describe-events --environment-name distillnet-env --region <your-region>
 ```
 
-### 4. Docker Build Fails
+### 5. Docker Build Fails
 
 **Error message:**
 ```
@@ -70,7 +100,7 @@ failed to build: error building: failed to compute cache key: failed to calculat
 3. Try clearing the GitHub Actions cache by adding a unique identifier to the workflow file
 4. Check for disk space issues in the GitHub runner
 
-### 5. Missing GitHub Secrets
+### 6. Missing GitHub Secrets
 
 **Error message:**
 ```
@@ -87,7 +117,7 @@ To check if secrets are properly set (without revealing their values):
 1. Go to your GitHub repository → Settings → Secrets and variables → Actions
 2. Confirm all three secrets are listed
 
-### 6. Model Files Not Found in Deployment
+### 7. Model Files Not Found in Deployment
 
 **Error message:**
 ```
@@ -105,7 +135,7 @@ Student model file not found. Using pretrained model instead.
    - Add a script to download pretrained models if they don't exist
    - Use Git LFS for large file storage
 
-### 7. Elastic Beanstalk Health Check Failures
+### 8. Elastic Beanstalk Health Check Failures
 
 **Error message:**
 ```
@@ -129,7 +159,7 @@ Health check failed: Elastic Load Balancer health check failure
        UnhealthyThresholdCount: 5
    ```
 
-### 8. Deployment Timeout
+### 9. Deployment Timeout
 
 **Error message:**
 ```
@@ -144,7 +174,7 @@ ERROR: Timed out while waiting for environment to reach state Ready
 2. Check if the application is taking too long to start
 3. Verify that your instance type has sufficient resources
 
-### 9. WebSocket Connection Issues
+### 10. WebSocket Connection Issues
 
 **Error message:**
 Users report that the Streamlit app keeps disconnecting or reloading.
@@ -158,7 +188,7 @@ proxy_set_header Connection "upgrade";
 proxy_read_timeout 86400;
 ```
 
-### 10. HTTPS/SSL Configuration
+### 11. HTTPS/SSL Configuration
 
 **Issue:**
 Need to enable HTTPS for your application.
