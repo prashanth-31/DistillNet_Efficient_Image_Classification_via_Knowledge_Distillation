@@ -40,62 +40,58 @@ jobs:
           # Check if the instance profile exists
           if ! aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role 2>/dev/null; then
             echo "Creating required IAM roles for Elastic Beanstalk..."
-
+            
             # Create the EC2 role trust policy
-            cat > ec2-trust-policy.json <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "ec2.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-
+            echo '{
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "ec2.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }' > ec2-trust-policy.json
+            
             # Create the EC2 role
             aws iam create-role --role-name aws-elasticbeanstalk-ec2-role --assume-role-policy-document file://ec2-trust-policy.json
-
+            
             # Attach necessary policies
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonECR-FullAccess
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-
+            
             # Create the instance profile
             aws iam create-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
-
+            
             # Add the role to the instance profile
             aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role
-
+            
             # Create the service role trust policy
-            cat > service-trust-policy.json <<EOF
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "elasticbeanstalk.amazonaws.com"
-      },
-      "Action": "sts:AssumeRole"
-    }
-  ]
-}
-EOF
-
+            echo '{
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": "elasticbeanstalk.amazonaws.com"
+                  },
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }' > service-trust-policy.json
+            
             # Create the service role
             aws iam create-role --role-name aws-elasticbeanstalk-service-role --assume-role-policy-document file://service-trust-policy.json
-
+            
             # Attach necessary policies to the service role
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
-
+            
             echo "IAM roles created successfully"
-
+            
             # Wait a bit for IAM changes to propagate
             echo "Waiting for IAM changes to propagate..."
             sleep 20
@@ -145,11 +141,10 @@ EOF
           ECR_REPOSITORY: distillnet
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          cat > Dockerrun.aws.json << EOF
-          {
+          echo '{
             "AWSEBDockerrunVersion": "1",
             "Image": {
-              "Name": "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG",
+              "Name": "'$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG'",
               "Update": "true"
             },
             "Ports": [
@@ -159,8 +154,7 @@ EOF
               }
             ],
             "Logging": "/app/logs"
-          }
-          EOF
+          }' > Dockerrun.aws.json
           
       - name: Generate deployment package
         run: |
@@ -168,17 +162,14 @@ EOF
           mkdir -p .ebextensions
           
           # Create Streamlit configuration
-          cat > .ebextensions/01_streamlit.config << EOF
-          option_settings:
+          echo 'option_settings:
             aws:elasticbeanstalk:application:environment:
               PYTHONPATH: "/app"
               STREAMLIT_SERVER_PORT: "8501"
-              STREAMLIT_SERVER_ADDRESS: "0.0.0.0"
-          EOF
+              STREAMLIT_SERVER_ADDRESS: "0.0.0.0"' > .ebextensions/01_streamlit.config
           
           # Create nginx configuration to proxy requests to Streamlit
-          cat > .ebextensions/02_nginx.config << EOF
-          files:
+          echo 'files:
             "/etc/nginx/conf.d/proxy.conf":
               mode: "000644"
               owner: root
@@ -193,14 +184,14 @@ EOF
                 
                   location / {
                     proxy_pass http://streamlit;
-                    proxy_set_header X-Real-IP \$remote_addr;
-                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-                    proxy_set_header Host \$http_host;
+                    proxy_set_header X-Real-IP $remote_addr;
+                    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                    proxy_set_header Host $http_host;
                     proxy_set_header X-NginX-Proxy true;
                     
                     # Specific for websockets
                     proxy_http_version 1.1;
-                    proxy_set_header Upgrade \$http_upgrade;
+                    proxy_set_header Upgrade $http_upgrade;
                     proxy_set_header Connection "upgrade";
                     proxy_read_timeout 86400;
                   }
@@ -212,42 +203,35 @@ EOF
               group: root
               content: |
                 #!/bin/bash
-                service nginx restart
-          EOF
+                service nginx restart' > .ebextensions/02_nginx.config
           
           # Create CloudWatch Logs configuration
-          cat > .ebextensions/03_logs.config << EOF
-          files:
+          echo 'files:
             "/opt/elasticbeanstalk/tasks/taillogs.d/streamlit.conf":
               mode: "000644"
               owner: root
               group: root
               content: |
-                /app/logs/streamlit.log
-          EOF
+                /app/logs/streamlit.log' > .ebextensions/03_logs.config
           
           # Create health check configuration
-          cat > .ebextensions/04_healthcheck.config << EOF
-          option_settings:
+          echo 'option_settings:
             aws:elasticbeanstalk:application:
               Application Healthcheck URL: /
             aws:elasticbeanstalk:environment:process:default:
               HealthCheckPath: /
-              Port: '80'
+              Port: "80"
               Protocol: HTTP
               HealthCheckTimeout: 30
               HealthyThresholdCount: 2
-              UnhealthyThresholdCount: 5
-          EOF
+              UnhealthyThresholdCount: 5' > .ebextensions/04_healthcheck.config
           
           # Create IAM configuration
-          cat > .ebextensions/05_iam.config << EOF
-          option_settings:
+          echo 'option_settings:
             aws:autoscaling:launchconfiguration:
               IamInstanceProfile: aws-elasticbeanstalk-ec2-role
             aws:elasticbeanstalk:environment:
-              ServiceRole: aws-elasticbeanstalk-service-role
-          EOF
+              ServiceRole: aws-elasticbeanstalk-service-role' > .ebextensions/05_iam.config
           
           # Create zip file with all required files
           zip -r deploy.zip Dockerrun.aws.json .ebextensions
