@@ -40,62 +40,62 @@ jobs:
           # Check if the instance profile exists
           if ! aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role 2>/dev/null; then
             echo "Creating required IAM roles for Elastic Beanstalk..."
-            
+
             # Create the EC2 role trust policy
-            cat > ec2-trust-policy.json << EOF
-            {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Principal": {
-                    "Service": "ec2.amazonaws.com"
-                  },
-                  "Action": "sts:AssumeRole"
-                }
-              ]
-            }
-            EOF
-            
+            cat > ec2-trust-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "ec2.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
             # Create the EC2 role
             aws iam create-role --role-name aws-elasticbeanstalk-ec2-role --assume-role-policy-document file://ec2-trust-policy.json
-            
+
             # Attach necessary policies
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonS3FullAccess
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonECR-FullAccess
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
-            
+
             # Create the instance profile
             aws iam create-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
-            
+
             # Add the role to the instance profile
             aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role
-            
+
             # Create the service role trust policy
-            cat > service-trust-policy.json << EOF
-            {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Principal": {
-                    "Service": "elasticbeanstalk.amazonaws.com"
-                  },
-                  "Action": "sts:AssumeRole"
-                }
-              ]
-            }
-            EOF
-            
+            cat > service-trust-policy.json <<EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "elasticbeanstalk.amazonaws.com"
+      },
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}
+EOF
+
             # Create the service role
             aws iam create-role --role-name aws-elasticbeanstalk-service-role --assume-role-policy-document file://service-trust-policy.json
-            
+
             # Attach necessary policies to the service role
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
-            
+
             echo "IAM roles created successfully"
-            
+
             # Wait a bit for IAM changes to propagate
             echo "Waiting for IAM changes to propagate..."
             sleep 20
