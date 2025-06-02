@@ -193,14 +193,15 @@ jobs:
             eb deploy distillnet-env --staged
           else
             echo "Creating new environment..."
-            # Create environment with simpler command format
+            # Create environment with minimal arguments
+            SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-8)
+            echo "Using simplified eb create command..."
             eb create distillnet-env \
-              --cname distillnet-$(echo ${{ github.sha }} | cut -c1-8) \
+              --cname distillnet-$SHORT_SHA \
               --elb-type application \
               --timeout 20 \
               --instance-type t2.small \
-              --platform docker \
-              --version-label distillnet-$(echo ${{ github.sha }} | cut -c1-8)
+              --platform docker
           fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

@@ -60,29 +60,29 @@ usage: eb create <environment_name> [options ...]
 eb: error: unrecognized arguments: --platform-version Docker running on 64bit Amazon Linux 2
 ```
 
+or
+
+```
+eb: error: unrecognized arguments: --version-label distillnet-80e678a1
+```
+
 **Solution:**
-This error occurs when using incorrect argument formats with the Elastic Beanstalk CLI. The EB CLI is particular about argument syntax:
+The Elastic Beanstalk CLI can be very particular about argument formats and versions. When encountering argument errors:
 
-1. Use `--platform` instead of `--platform-version` for specifying the platform
-2. Use simple platform identifiers like `docker` instead of full descriptive strings
-3. Use `--instance-type` (singular) instead of `--instance-types` (plural)
-4. Keep version labels and CNAME prefixes short (under 40 characters)
+1. Simplify your command by removing problematic arguments
+2. Use only the essential arguments needed for deployment:
+   ```bash
+   eb create distillnet-env \
+     --cname distillnet-short \
+     --elb-type application \
+     --instance-type t2.small \
+     --platform docker
+   ```
+3. Avoid using `--version-label` or `--platform-version` if they cause errors
+4. Check your EB CLI version with `eb --version` and consider updating if needed
+5. For debugging, run `eb platform list` to see supported platforms
 
-Correct command format:
-```bash
-eb create distillnet-env \
-  --cname distillnet-short \
-  --elb-type application \
-  --timeout 20 \
-  --instance-type t2.small \
-  --platform docker \
-  --version-label distillnet-short
-```
-
-You can check available platforms with:
-```bash
-eb platform list
-```
+**Note:** Different versions of the EB CLI may accept different argument formats. The simplified command above should work with most versions.
 
 ### 4. Insufficient IAM Permissions
 
