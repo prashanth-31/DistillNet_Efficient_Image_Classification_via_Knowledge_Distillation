@@ -193,13 +193,14 @@ jobs:
             eb deploy distillnet-env --staged
           else
             echo "Creating new environment..."
+            # Create environment with simpler command format
             eb create distillnet-env \
-              --cname distillnet-${{ github.sha }} \
+              --cname distillnet-$(echo ${{ github.sha }} | cut -c1-8) \
               --elb-type application \
               --timeout 20 \
-              --instance-types t2.small \
-              --platform-version "Docker running on 64bit Amazon Linux 2" \
-              --version-label distillnet-${{ github.sha }}
+              --instance-type t2.small \
+              --platform docker \
+              --version-label distillnet-$(echo ${{ github.sha }} | cut -c1-8)
           fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

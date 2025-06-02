@@ -50,7 +50,41 @@ if [ ! -f /app/models/model.pth ]; then\n\
 fi' > /app/startup.sh
 ```
 
-### 3. Insufficient IAM Permissions
+### 3. Elastic Beanstalk CLI Argument Error
+
+**Error message:**
+```
+ERROR: NotFoundError - Environment "distillnet-env" not Found.
+Creating new environment...
+usage: eb create <environment_name> [options ...]
+eb: error: unrecognized arguments: --platform-version Docker running on 64bit Amazon Linux 2
+```
+
+**Solution:**
+This error occurs when using incorrect argument formats with the Elastic Beanstalk CLI. The EB CLI is particular about argument syntax:
+
+1. Use `--platform` instead of `--platform-version` for specifying the platform
+2. Use simple platform identifiers like `docker` instead of full descriptive strings
+3. Use `--instance-type` (singular) instead of `--instance-types` (plural)
+4. Keep version labels and CNAME prefixes short (under 40 characters)
+
+Correct command format:
+```bash
+eb create distillnet-env \
+  --cname distillnet-short \
+  --elb-type application \
+  --timeout 20 \
+  --instance-type t2.small \
+  --platform docker \
+  --version-label distillnet-short
+```
+
+You can check available platforms with:
+```bash
+eb platform list
+```
+
+### 4. Insufficient IAM Permissions
 
 **Error message:**
 ```
@@ -64,7 +98,7 @@ Ensure your IAM user has the required permissions. You can attach the following 
 
 For a more secure approach, create a custom policy with the minimum required permissions as described in the [AWS_DEPLOYMENT.md](../../AWS_DEPLOYMENT.md) file.
 
-### 4. Elastic Beanstalk Environment Creation Fails
+### 5. Elastic Beanstalk Environment Creation Fails
 
 **Error message:**
 ```
@@ -84,7 +118,7 @@ To get detailed error information:
 aws elasticbeanstalk describe-events --environment-name distillnet-env --region <your-region>
 ```
 
-### 5. Docker Build Fails
+### 6. Docker Build Fails
 
 **Error message:**
 ```
@@ -100,7 +134,7 @@ failed to build: error building: failed to compute cache key: failed to calculat
 3. Try clearing the GitHub Actions cache by adding a unique identifier to the workflow file
 4. Check for disk space issues in the GitHub runner
 
-### 6. Missing GitHub Secrets
+### 7. Missing GitHub Secrets
 
 **Error message:**
 ```
@@ -117,7 +151,7 @@ To check if secrets are properly set (without revealing their values):
 1. Go to your GitHub repository → Settings → Secrets and variables → Actions
 2. Confirm all three secrets are listed
 
-### 7. Model Files Not Found in Deployment
+### 8. Model Files Not Found in Deployment
 
 **Error message:**
 ```
@@ -135,7 +169,7 @@ Student model file not found. Using pretrained model instead.
    - Add a script to download pretrained models if they don't exist
    - Use Git LFS for large file storage
 
-### 8. Elastic Beanstalk Health Check Failures
+### 9. Elastic Beanstalk Health Check Failures
 
 **Error message:**
 ```
@@ -159,7 +193,7 @@ Health check failed: Elastic Load Balancer health check failure
        UnhealthyThresholdCount: 5
    ```
 
-### 9. Deployment Timeout
+### 10. Deployment Timeout
 
 **Error message:**
 ```
@@ -174,7 +208,7 @@ ERROR: Timed out while waiting for environment to reach state Ready
 2. Check if the application is taking too long to start
 3. Verify that your instance type has sufficient resources
 
-### 10. WebSocket Connection Issues
+### 11. WebSocket Connection Issues
 
 **Error message:**
 Users report that the Streamlit app keeps disconnecting or reloading.
@@ -188,7 +222,7 @@ proxy_set_header Connection "upgrade";
 proxy_read_timeout 86400;
 ```
 
-### 11. HTTPS/SSL Configuration
+### 12. HTTPS/SSL Configuration
 
 **Issue:**
 Need to enable HTTPS for your application.
