@@ -251,8 +251,8 @@ EOL
                 "HostPort": "80"
               }
             ],
-            "Logging": "/app/logs",
-            "Memory": 1024
+            "Logging": "/var/log/streamlit",
+            "Memory": 512
           }' > Dockerrun.aws.json
           
           echo "Dockerrun.aws.json content:"
@@ -297,24 +297,7 @@ EOL
                     proxy_set_header Connection "upgrade";
                     proxy_read_timeout 86400;
                   }
-                }
-          
-            "/opt/elasticbeanstalk/hooks/appdeploy/post/99_restart_nginx.sh":
-              mode: "000755"
-              owner: root
-              group: root
-              content: |
-                #!/bin/bash
-                service nginx restart' > .ebextensions/02_nginx.config
-          
-          # Create CloudWatch Logs configuration
-          echo 'files:
-            "/opt/elasticbeanstalk/tasks/taillogs.d/streamlit.conf":
-              mode: "000644"
-              owner: root
-              group: root
-              content: |
-                /app/logs/streamlit.log' > .ebextensions/03_logs.config
+                }' > .ebextensions/02_nginx.config
           
           # Create health check configuration
           echo 'option_settings:
@@ -323,17 +306,7 @@ EOL
             aws:elasticbeanstalk:environment:process:default:
               HealthCheckPath: /
               Port: "80"
-              Protocol: HTTP
-              HealthCheckTimeout: 30
-              HealthyThresholdCount: 2
-              UnhealthyThresholdCount: 5' > .ebextensions/04_healthcheck.config
-          
-          # Create IAM configuration
-          echo 'option_settings:
-            aws:autoscaling:launchconfiguration:
-              IamInstanceProfile: aws-elasticbeanstalk-ec2-role
-            aws:elasticbeanstalk:environment:
-              ServiceRole: aws-elasticbeanstalk-service-role' > .ebextensions/05_iam.config
+              Protocol: HTTP' > .ebextensions/03_healthcheck.config
           
           # Create zip file with all required files
           zip -r deploy.zip Dockerrun.aws.json .ebextensions
@@ -361,11 +334,9 @@ EOL
             echo "Using simplified eb create command..."
             eb create distillnet-env \
               --cname distillnet-$SHORT_SHA \
-              --elb-type application \
-              --timeout 20 \
-              --instance-type t2.small \
+              --instance-type t2.micro \
+              --single \
               --platform docker \
-              --tags service=distillnet,environment=production \
               --debug
           fi
         env:
