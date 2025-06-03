@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Dockerfile.minimal'
+      - 'app/**'
+      - 'src/**'
+      - 'requirements.txt'
   pull_request:
     branches:
       - main
@@ -16,64 +21,62 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Fetch all history for proper versioning
         
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       
       - name: Create minimal Dockerfile
         run: |
-          echo "Creating minimal Dockerfile..."
-          cat > Dockerfile.minimal << 'EOL'
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-RUN pip install --no-cache-dir streamlit
-
-# Create a simple Streamlit app
-RUN mkdir -p /app/app
-RUN echo 'import streamlit as st\n\nst.set_page_config(page_title="DistillNet", layout="wide")\n\nst.title("DistillNet Image Classifier")\n\nst.write("This is a minimal version of the app for testing deployment.")\n\nst.success("Deployment successful!")' > /app/app/app.py
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV STREAMLIT_SERVER_PORT=8501
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-
-# Expose port for Streamlit
-EXPOSE 8501
-
-# Run the Streamlit app
-CMD ["streamlit", "run", "/app/app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-EOL
+          echo 'FROM python:3.9-slim' > Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo 'WORKDIR /app' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Install system dependencies' >> Dockerfile.minimal
+          echo 'RUN apt-get update && apt-get install -y --no-install-recommends \' >> Dockerfile.minimal
+          echo '    build-essential \' >> Dockerfile.minimal
+          echo '    && rm -rf /var/lib/apt/lists/*' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Install Python dependencies' >> Dockerfile.minimal
+          echo 'RUN pip install --no-cache-dir streamlit' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Create a simple Streamlit app' >> Dockerfile.minimal
+          echo 'RUN mkdir -p /app/app' >> Dockerfile.minimal
+          echo 'RUN echo '"'"'import streamlit as st\n\nst.set_page_config(page_title="DistillNet", layout="wide")\n\nst.title("DistillNet Image Classifier")\n\nst.write("This is a minimal version of the app for testing deployment.")\n\nst.success("Build successful!")'"'"' > /app/app/app.py' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Set environment variables' >> Dockerfile.minimal
+          echo 'ENV PYTHONPATH=/app' >> Dockerfile.minimal
+          echo 'ENV STREAMLIT_SERVER_PORT=8501' >> Dockerfile.minimal
+          echo 'ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Expose port for Streamlit' >> Dockerfile.minimal
+          echo 'EXPOSE 8501' >> Dockerfile.minimal
+          echo '' >> Dockerfile.minimal
+          echo '# Run the Streamlit app' >> Dockerfile.minimal
+          echo 'CMD ["streamlit", "run", "/app/app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]' >> Dockerfile.minimal
           
-          echo "Contents of Dockerfile.minimal:"
-          cat Dockerfile.minimal
-      
       - name: Build Docker image
         run: |
-          echo "Building Docker image..."
-          docker build -t distillnet:minimal -f Dockerfile.minimal .
-      
+          docker build -t distillnet:test -f Dockerfile.minimal .
+        
       - name: Test Docker image
         run: |
-          echo "Running Docker container for testing..."
-          docker run -d --name distillnet-test -p 8501:8501 distillnet:minimal
+          # Run the container in the background
+          docker run -d --name distillnet-test -p 8501:8501 distillnet:test
           
-          echo "Waiting for container to start..."
+          # Wait for the container to start
           sleep 10
           
-          echo "Container logs:"
+          # Check the container logs
           docker logs distillnet-test
           
-          echo "Stopping container..."
-          docker stop distillnet-test
+          # Check if the container is running
+          if docker ps | grep distillnet-test; then
+            echo "Container is running successfully"
+          else
+            echo "Container failed to start"
+            exit 1
+          fi
           
-          echo "Docker image built and tested successfully!" 
+          # Stop the container
+          docker stop distillnet-test
+          docker rm distillnet-test 
