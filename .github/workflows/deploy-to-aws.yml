@@ -168,6 +168,15 @@ jobs:
           ECR_REPOSITORY: distillnet
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          echo "Listing files in app directory..."
+          ls -la app/
+          
+          echo "Listing files in src directory..."
+          ls -la src/
+          
+          echo "Listing files in src/models directory..."
+          ls -la src/models/
+          
           echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f Dockerfile.streamlit .
           
@@ -201,8 +210,12 @@ jobs:
                 "HostPort": "80"
               }
             ],
-            "Logging": "/app/logs"
+            "Logging": "/app/logs",
+            "Memory": 1024
           }' > Dockerrun.aws.json
+          
+          echo "Dockerrun.aws.json content:"
+          cat Dockerrun.aws.json
           
       - name: Generate deployment package
         run: |
@@ -299,7 +312,7 @@ jobs:
           # Check if environment exists
           if eb status distillnet-env 2>/dev/null; then
             echo "Environment exists, deploying updates..."
-            eb deploy distillnet-env --staged
+            eb deploy distillnet-env --staged --debug
           else
             echo "Creating new environment..."
             # Create environment with minimal arguments
@@ -311,7 +324,8 @@ jobs:
               --timeout 20 \
               --instance-type t2.small \
               --platform docker \
-              --tags service=distillnet,environment=production
+              --tags service=distillnet,environment=production \
+              --debug
           fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}

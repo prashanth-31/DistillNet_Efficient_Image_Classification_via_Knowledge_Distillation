@@ -15,19 +15,23 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir streamlit
 
 # Create necessary directories
-RUN mkdir -p /app/models /app/src/models
+RUN mkdir -p /app/models /app/src/models /app/app/sample_images
+
+# Create minimal structure for the app
+RUN echo "# DistillNet package" > /app/src/__init__.py
+RUN echo "# App README" > /app/app/README.md
 
 # Copy source code files
 COPY src/models/__init__.py /app/src/models/
 COPY src/models/student_model.py /app/src/models/
 COPY src/utils.py /app/src/
-COPY src/__init__.py /app/src/ 2>/dev/null || :
 
 # Copy app files
 COPY app/streamlit_app.py /app/app/
-COPY app/README.md /app/app/ 2>/dev/null || :
-COPY app/sample_images /app/app/sample_images/ 2>/dev/null || :
 COPY config.yaml /app/
+
+# Copy sample images if they exist
+COPY app/sample_images/* /app/app/sample_images/ || true
 
 # Create a startup script that generates models if they don't exist
 RUN echo '#!/bin/bash\n\
