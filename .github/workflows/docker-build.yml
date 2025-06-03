@@ -38,44 +38,47 @@ jobs:
             echo "models_exist=false" >> $GITHUB_OUTPUT
           fi
       
-      - name: Create minimal Dockerfile
+      - name: Create Dockerfile content
         run: |
-          cat > Dockerfile.minimal << 'ENDOFFILE'
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-RUN pip install --no-cache-dir streamlit torch torchvision pyyaml
-
-# Create necessary directories
-RUN mkdir -p /app/models /app/src /app/app
-
-# Copy app files
-COPY app/streamlit_app.py /app/app/
-COPY app/sample_images /app/app/sample_images/
-COPY src /app/src/
-COPY config.yaml /app/
-
-# Copy model files if they exist
-COPY app/models/ /app/models/
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV STREAMLIT_SERVER_PORT=8501
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-
-# Expose port for Streamlit
-EXPOSE 8501
-
-# Run the Streamlit app
-CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-ENDOFFILE
+          # Create Dockerfile line by line
+          rm -f Dockerfile.minimal
+          echo "FROM python:3.9-slim" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "WORKDIR /app" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Install system dependencies" >> Dockerfile.minimal
+          echo "RUN apt-get update && apt-get install -y --no-install-recommends \\" >> Dockerfile.minimal
+          echo "    build-essential \\" >> Dockerfile.minimal
+          echo "    && rm -rf /var/lib/apt/lists/*" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Install Python dependencies" >> Dockerfile.minimal
+          echo "RUN pip install --no-cache-dir streamlit torch torchvision pyyaml" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Create necessary directories" >> Dockerfile.minimal
+          echo "RUN mkdir -p /app/models /app/src /app/app" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Copy app files" >> Dockerfile.minimal
+          echo "COPY app/streamlit_app.py /app/app/" >> Dockerfile.minimal
+          echo "COPY app/sample_images /app/app/sample_images/" >> Dockerfile.minimal
+          echo "COPY src /app/src/" >> Dockerfile.minimal
+          echo "COPY config.yaml /app/" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Copy model files if they exist" >> Dockerfile.minimal
+          echo "COPY app/models/ /app/models/" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Set environment variables" >> Dockerfile.minimal
+          echo "ENV PYTHONPATH=/app" >> Dockerfile.minimal
+          echo "ENV STREAMLIT_SERVER_PORT=8501" >> Dockerfile.minimal
+          echo "ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Expose port for Streamlit" >> Dockerfile.minimal
+          echo "EXPOSE 8501" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Run the Streamlit app" >> Dockerfile.minimal
+          echo 'CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]' >> Dockerfile.minimal
+          
+          # Display the Dockerfile content for debugging
+          cat Dockerfile.minimal
           
       - name: Build Docker image
         run: |
