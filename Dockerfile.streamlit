@@ -14,28 +14,43 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir streamlit
 
-# Create model directory
-RUN mkdir -p /app/models
+# Create necessary directories
+RUN mkdir -p /app/models /app/src/models
 
-# Copy project files (excluding large model files initially)
-COPY app/streamlit_app.py app/
-COPY app/README.md app/
-COPY app/sample_images app/sample_images/
-COPY config.yaml .
+# Copy source code files
+COPY src/models/__init__.py /app/src/models/
+COPY src/models/student_model.py /app/src/models/
+COPY src/utils.py /app/src/
+COPY src/__init__.py /app/src/ 2>/dev/null || :
 
-# Create a startup script
+# Copy app files
+COPY app/streamlit_app.py /app/app/
+COPY app/README.md /app/app/ 2>/dev/null || :
+COPY app/sample_images /app/app/sample_images/ 2>/dev/null || :
+COPY config.yaml /app/
+
+# Create a startup script that generates models if they don't exist
 RUN echo '#!/bin/bash\n\
 \n\
+# Check if model files exist, if not generate them\n\
+if [ ! -f /app/models/teacher_model.pth ] || [ ! -f /app/models/student_model.pth ]; then\n\
+  echo "Model files not found. Generating default models..."\n\
+  python -c "import torch; import torchvision.models as models; \
+  teacher = models.resnet50(weights=None); \
+  teacher.fc = torch.nn.Linear(teacher.fc.in_features, 10); \
+  torch.save(teacher.state_dict(), \"/app/models/teacher_model.pth\"); \
+  student = models.resnet18(weights=None); \
+  student.fc = torch.nn.Linear(student.fc.in_features, 10); \
+  torch.save(student.state_dict(), \"/app/models/student_model.pth\")"\n\
+  echo "Default model files generated successfully."\n\
+fi\n\
+\n\
 # Run the Streamlit app\n\
-exec streamlit run app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0\n\
+exec streamlit run /app/app/streamlit_app.py --server.port=8501 --server.address=0.0.0.0\n\
 ' > /app/startup.sh
 
 # Make startup script executable
 RUN chmod +x /app/startup.sh
-
-# Copy model files (these are large, so copy them last to optimize build caching)
-COPY app/models/teacher_model.pth app/models/
-COPY app/models/student_model.pth app/models/
 
 # Set environment variables
 ENV PYTHONPATH=/app

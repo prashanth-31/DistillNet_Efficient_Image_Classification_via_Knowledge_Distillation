@@ -171,6 +171,13 @@ jobs:
           echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -t $ECR_REGISTRY/$ECR_REPOSITORY:latest -f Dockerfile.streamlit .
           
+          # Test the image locally
+          echo "Testing Docker image locally..."
+          docker run --rm -d --name distillnet-test -p 8501:8501 $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          sleep 10
+          docker logs distillnet-test
+          docker stop distillnet-test
+          
           echo "Pushing Docker image to ECR..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
