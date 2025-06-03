@@ -304,8 +304,7 @@ jobs:
               --timeout 20 \
               --instance-type t2.small \
               --platform docker \
-              --service-role aws-elasticbeanstalk-service-role \
-              --instance-profile aws-elasticbeanstalk-ec2-role
+              --tags service=distillnet,environment=production
           fi
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
