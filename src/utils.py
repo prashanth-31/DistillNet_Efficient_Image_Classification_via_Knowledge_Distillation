@@ -50,5 +50,5 @@ def save_model(model, path):
     
 def load_model(model, path):
     """Load model from disk"""
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path, map_location=torch.device('cpu')))
     return model
