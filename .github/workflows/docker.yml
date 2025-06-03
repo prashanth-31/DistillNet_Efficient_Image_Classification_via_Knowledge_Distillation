@@ -1,0 +1,137 @@
+name: Build Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Dockerfile.minimal'
+      - 'app/**'
+      - 'src/**'
+      - 'requirements.txt'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          lfs: true  # Enable Git LFS to pull large model files
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Check for model files
+        id: check-models
+        run: |
+          if [ -f "app/models/teacher_model.pth" ] && [ -f "app/models/student_model.pth" ]; then
+            echo "Models exist in the repository"
+            echo "models_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "Models not found in the repository"
+            echo "models_exist=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Create Dockerfile content
+        run: |
+          # Create Dockerfile line by line
+          rm -f Dockerfile.minimal
+          echo "FROM python:3.9-slim" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "WORKDIR /app" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Install system dependencies" >> Dockerfile.minimal
+          echo "RUN apt-get update && apt-get install -y --no-install-recommends \\" >> Dockerfile.minimal
+          echo "    build-essential \\" >> Dockerfile.minimal
+          echo "    && rm -rf /var/lib/apt/lists/*" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Copy requirements file" >> Dockerfile.minimal
+          echo "COPY requirements.txt ." >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Install Python dependencies" >> Dockerfile.minimal
+          echo "RUN pip install --no-cache-dir -r requirements.txt" >> Dockerfile.minimal
+          echo "RUN pip install --no-cache-dir streamlit" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Create necessary directories" >> Dockerfile.minimal
+          echo "RUN mkdir -p /app/models /app/src /app/app" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Copy app files" >> Dockerfile.minimal
+          echo "COPY app/streamlit_app.py /app/app/" >> Dockerfile.minimal
+          echo "COPY app/sample_images /app/app/sample_images/" >> Dockerfile.minimal
+          echo "COPY src /app/src/" >> Dockerfile.minimal
+          echo "COPY config.yaml /app/" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Copy model files if they exist" >> Dockerfile.minimal
+          echo "COPY app/models/ /app/models/" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Set environment variables" >> Dockerfile.minimal
+          echo "ENV PYTHONPATH=/app" >> Dockerfile.minimal
+          echo "ENV STREAMLIT_SERVER_PORT=8501" >> Dockerfile.minimal
+          echo "ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Expose port for Streamlit" >> Dockerfile.minimal
+          echo "EXPOSE 8501" >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
+          echo "# Run the Streamlit app" >> Dockerfile.minimal
+          echo 'CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]' >> Dockerfile.minimal
+          
+          # Display the Dockerfile content for debugging
+          cat Dockerfile.minimal
+          
+      - name: Build Docker image
+        run: |
+          docker build -t distillnet:test -f Dockerfile.minimal .
+        
+      - name: Test Docker image
+        run: |
+          # Run the container in the background
+          docker run -d --name distillnet-test -p 8501:8501 distillnet:test
+          
+          # Wait for the container to start
+          sleep 10
+          
+          # Check the container logs
+          docker logs distillnet-test
+          
+          # Check if the container is running
+          if docker ps | grep distillnet-test; then
+            echo "Container is running successfully"
+          else
+            echo "Container failed to start"
+            exit 1
+          fi
+          
+          # Stop the container
+          docker stop distillnet-test
+          docker rm distillnet-test  
+
+      - name: Login to Docker Hub
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Tag and Push Docker image
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          # Tag with latest and commit SHA
+          DOCKER_REPO="${{ secrets.DOCKERHUB_USERNAME }}/distillnet"
+          COMMIT_SHA="${{ github.sha }}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+          
+          docker tag distillnet:test $DOCKER_REPO:latest
+          docker tag distillnet:test $DOCKER_REPO:$SHORT_SHA
+          
+          # Push images to Docker Hub
+          docker push $DOCKER_REPO:latest
+          docker push $DOCKER_REPO:$SHORT_SHA
+          
+          echo "Successfully pushed images to Docker Hub:"
+          echo "  - $DOCKER_REPO:latest"
+          echo "  - $DOCKER_REPO:$SHORT_SHA"  
