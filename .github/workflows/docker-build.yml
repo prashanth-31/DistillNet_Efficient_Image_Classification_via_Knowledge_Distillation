@@ -105,4 +105,4 @@ jobs:
           
           # Stop the container
           docker stop distillnet-test
-          docker rm distillnet-test 
+          docker rm distillnet-test  
