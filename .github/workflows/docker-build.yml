@@ -27,32 +27,50 @@ jobs:
       
       - name: Create minimal Dockerfile
         run: |
-          echo 'FROM python:3.9-slim' > Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo 'WORKDIR /app' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Install system dependencies' >> Dockerfile.minimal
-          echo 'RUN apt-get update && apt-get install -y --no-install-recommends \' >> Dockerfile.minimal
-          echo '    build-essential \' >> Dockerfile.minimal
-          echo '    && rm -rf /var/lib/apt/lists/*' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Install Python dependencies' >> Dockerfile.minimal
-          echo 'RUN pip install --no-cache-dir streamlit' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Create a simple Streamlit app' >> Dockerfile.minimal
-          echo 'RUN mkdir -p /app/app' >> Dockerfile.minimal
-          echo 'RUN echo '"'"'import streamlit as st\n\nst.set_page_config(page_title="DistillNet", layout="wide")\n\nst.title("DistillNet Image Classifier")\n\nst.write("This is a minimal version of the app for testing deployment.")\n\nst.success("Build successful!")'"'"' > /app/app/app.py' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Set environment variables' >> Dockerfile.minimal
-          echo 'ENV PYTHONPATH=/app' >> Dockerfile.minimal
-          echo 'ENV STREAMLIT_SERVER_PORT=8501' >> Dockerfile.minimal
-          echo 'ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Expose port for Streamlit' >> Dockerfile.minimal
-          echo 'EXPOSE 8501' >> Dockerfile.minimal
-          echo '' >> Dockerfile.minimal
-          echo '# Run the Streamlit app' >> Dockerfile.minimal
-          echo 'CMD ["streamlit", "run", "/app/app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]' >> Dockerfile.minimal
+          # Create a simple Dockerfile
+          cat > Dockerfile.minimal << EOF
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \\
+    build-essential \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir streamlit
+
+# Create app directory
+RUN mkdir -p /app/app
+
+# Copy app file
+COPY app.py /app/app/
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV STREAMLIT_SERVER_PORT=8501
+ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+# Expose port for Streamlit
+EXPOSE 8501
+
+# Run the Streamlit app
+CMD ["streamlit", "run", "/app/app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+EOF
+
+          # Create a simple Streamlit app file
+          cat > app.py << EOF
+import streamlit as st
+
+st.set_page_config(page_title="DistillNet", layout="wide")
+
+st.title("DistillNet Image Classifier")
+
+st.write("This is a minimal version of the app for testing deployment.")
+
+st.success("Build successful!")
+EOF
           
       - name: Build Docker image
         run: |
