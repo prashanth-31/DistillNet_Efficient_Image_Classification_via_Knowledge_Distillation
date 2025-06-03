@@ -51,8 +51,12 @@ jobs:
           echo "    build-essential \\" >> Dockerfile.minimal
           echo "    && rm -rf /var/lib/apt/lists/*" >> Dockerfile.minimal
           echo "" >> Dockerfile.minimal
+          echo "# Copy requirements file" >> Dockerfile.minimal
+          echo "COPY requirements.txt ." >> Dockerfile.minimal
+          echo "" >> Dockerfile.minimal
           echo "# Install Python dependencies" >> Dockerfile.minimal
-          echo "RUN pip install --no-cache-dir streamlit torch torchvision pyyaml" >> Dockerfile.minimal
+          echo "RUN pip install --no-cache-dir -r requirements.txt" >> Dockerfile.minimal
+          echo "RUN pip install --no-cache-dir streamlit" >> Dockerfile.minimal
           echo "" >> Dockerfile.minimal
           echo "# Create necessary directories" >> Dockerfile.minimal
           echo "RUN mkdir -p /app/models /app/src /app/app" >> Dockerfile.minimal
@@ -113,7 +117,6 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          
       - name: Tag and Push Docker image
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
