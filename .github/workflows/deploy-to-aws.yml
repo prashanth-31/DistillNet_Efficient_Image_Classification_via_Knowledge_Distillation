@@ -166,47 +166,45 @@ jobs:
         run: |
           if [ ! -f Dockerfile.minimal ]; then
             echo "Creating minimal Dockerfile..."
-            cat > Dockerfile.minimal << 'EOL'
-FROM python:3.9-slim
-
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements file
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir streamlit
-
-# Create necessary directories
-RUN mkdir -p /app/models /app/src /app/app
-
-# Create minimal structure
-RUN echo "import torch\\nimport torch.nn as nn\\nfrom torchvision import models\\n\\ndef get_teacher_model(model_name='resnet50', num_classes=10, pretrained=False):\\n    model = models.resnet50(weights=None)\\n    model.fc = nn.Linear(model.fc.in_features, num_classes)\\n    return model\\n\\ndef get_student_model(model_name='resnet18', num_classes=10, pretrained=False):\\n    model = models.resnet18(weights=None)\\n    model.fc = nn.Linear(model.fc.in_features, num_classes)\\n    return model\\n\\ndef count_parameters(model):\\n    return sum(p.numel() for p in model.parameters() if p.requires_grad)" > /app/src/models.py
-
-RUN echo "import torch\\nimport yaml\\n\\ndef load_config(config_path):\\n    with open(config_path, 'r') as f:\\n        config = yaml.safe_load(f)\\n    return config\\n\\ndef load_model(model, path):\\n    model.load_state_dict(torch.load(path))\\n    return model" > /app/src/utils.py
-
-RUN echo "dataset:\\n  name: 'cifar10'\\n  data_dir: './data'\\nteacher:\\n  model: 'resnet50'\\n  save_path: '/app/models/teacher_model.pth'\\nstudent:\\n  model: 'resnet18'\\n  save_path: '/app/models/student_model.pth'" > /app/config.yaml
-
-# Create a simple Streamlit app
-RUN echo "import streamlit as st\\nimport torch\\nimport torchvision.transforms as transforms\\nfrom PIL import Image\\nimport sys\\nimport os\\n\\nst.set_page_config(page_title='DistillNet', layout='wide')\\n\\nst.title('DistillNet Image Classifier')\\n\\nst.write('This is a minimal version of the app for testing deployment.')\\n\\nif st.button('Generate Models'):\\n    st.write('Generating models...')\\n    import torchvision.models as models\\n    teacher = models.resnet50(weights=None)\\n    teacher.fc = torch.nn.Linear(teacher.fc.in_features, 10)\\n    torch.save(teacher.state_dict(), '/app/models/teacher_model.pth')\\n    \\n    student = models.resnet18(weights=None)\\n    student.fc = torch.nn.Linear(student.fc.in_features, 10)\\n    torch.save(student.state_dict(), '/app/models/student_model.pth')\\n    \\n    st.success('Models generated successfully!')" > /app/app/streamlit_app.py
-
-# Set environment variables
-ENV PYTHONPATH=/app
-ENV STREAMLIT_SERVER_PORT=8501
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
-
-# Expose port for Streamlit
-EXPOSE 8501
-
-# Run the Streamlit app
-CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-EOL
+            echo 'FROM python:3.9-slim' > Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo 'WORKDIR /app' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Install system dependencies' >> Dockerfile.minimal
+            echo 'RUN apt-get update && apt-get install -y --no-install-recommends \\' >> Dockerfile.minimal
+            echo '    build-essential \\' >> Dockerfile.minimal
+            echo '    && rm -rf /var/lib/apt/lists/*' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Copy requirements file' >> Dockerfile.minimal
+            echo 'COPY requirements.txt .' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Install Python dependencies' >> Dockerfile.minimal
+            echo 'RUN pip install --no-cache-dir -r requirements.txt' >> Dockerfile.minimal
+            echo 'RUN pip install --no-cache-dir streamlit' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Create necessary directories' >> Dockerfile.minimal
+            echo 'RUN mkdir -p /app/models /app/src /app/app' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Create minimal structure' >> Dockerfile.minimal
+            echo 'RUN echo "import torch\\nimport torch.nn as nn\\nfrom torchvision import models\\n\\ndef get_teacher_model(model_name='\''resnet50'\'', num_classes=10, pretrained=False):\\n    model = models.resnet50(weights=None)\\n    model.fc = nn.Linear(model.fc.in_features, num_classes)\\n    return model\\n\\ndef get_student_model(model_name='\''resnet18'\'', num_classes=10, pretrained=False):\\n    model = models.resnet18(weights=None)\\n    model.fc = nn.Linear(model.fc.in_features, num_classes)\\n    return model\\n\\ndef count_parameters(model):\\n    return sum(p.numel() for p in model.parameters() if p.requires_grad)" > /app/src/models.py' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo 'RUN echo "import torch\\nimport yaml\\n\\ndef load_config(config_path):\\n    with open(config_path, '\''r'\'') as f:\\n        config = yaml.safe_load(f)\\n    return config\\n\\ndef load_model(model, path):\\n    model.load_state_dict(torch.load(path))\\n    return model" > /app/src/utils.py' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo 'RUN echo "dataset:\\n  name: '\''cifar10'\''\\n  data_dir: '\''./data'\''\\nteacher:\\n  model: '\''resnet50'\''\\n  save_path: '\''/app/models/teacher_model.pth'\''\\nstudent:\\n  model: '\''resnet18'\''\\n  save_path: '\''/app/models/student_model.pth'\''" > /app/config.yaml' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Create a simple Streamlit app' >> Dockerfile.minimal
+            echo 'RUN echo "import streamlit as st\\nimport torch\\nimport torchvision.transforms as transforms\\nfrom PIL import Image\\nimport sys\\nimport os\\n\\nst.set_page_config(page_title='\''DistillNet'\'', layout='\''wide'\'')\\n\\nst.title('\''DistillNet Image Classifier'\'')\\n\\nst.write('\''This is a minimal version of the app for testing deployment.'\'')\\n\\nif st.button('\''Generate Models'\''):\\n    st.write('\''Generating models...'\'')\\n    import torchvision.models as models\\n    teacher = models.resnet50(weights=None)\\n    teacher.fc = torch.nn.Linear(teacher.fc.in_features, 10)\\n    torch.save(teacher.state_dict(), '\''/app/models/teacher_model.pth'\'')\\n    \\n    student = models.resnet18(weights=None)\\n    student.fc = torch.nn.Linear(student.fc.in_features, 10)\\n    torch.save(student.state_dict(), '\''/app/models/student_model.pth'\'')\\n    \\n    st.success('\''Models generated successfully!'\'')" > /app/app/streamlit_app.py' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Set environment variables' >> Dockerfile.minimal
+            echo 'ENV PYTHONPATH=/app' >> Dockerfile.minimal
+            echo 'ENV STREAMLIT_SERVER_PORT=8501' >> Dockerfile.minimal
+            echo 'ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Expose port for Streamlit' >> Dockerfile.minimal
+            echo 'EXPOSE 8501' >> Dockerfile.minimal
+            echo '' >> Dockerfile.minimal
+            echo '# Run the Streamlit app' >> Dockerfile.minimal
+            echo 'CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]' >> Dockerfile.minimal
           fi
           
           echo "Contents of Dockerfile.minimal:"
