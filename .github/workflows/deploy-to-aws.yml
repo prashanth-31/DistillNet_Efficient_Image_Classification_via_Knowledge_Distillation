@@ -35,11 +35,25 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
       
-      - name: Create required IAM roles
+      - name: Verify IAM roles
         run: |
-          # Check if the instance profile exists
-          if ! aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role 2>/dev/null; then
-            echo "Creating required IAM roles for Elastic Beanstalk..."
+          echo "Verifying required IAM roles for Elastic Beanstalk..."
+          
+          # Function to check if a role exists
+          role_exists() {
+            aws iam get-role --role-name "$1" 2>/dev/null
+            return $?
+          }
+          
+          # Function to check if an instance profile exists
+          profile_exists() {
+            aws iam get-instance-profile --instance-profile-name "$1" 2>/dev/null
+            return $?
+          }
+          
+          # EC2 role
+          if ! role_exists "aws-elasticbeanstalk-ec2-role"; then
+            echo "Creating EC2 role..."
             
             # Create the EC2 role trust policy
             echo '{
@@ -63,11 +77,36 @@ jobs:
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonECR-FullAccess
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-ec2-role --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
             
+            echo "EC2 role created successfully"
+          else
+            echo "EC2 role already exists"
+          fi
+          
+          # Instance profile
+          if ! profile_exists "aws-elasticbeanstalk-ec2-role"; then
+            echo "Creating instance profile..."
+            
             # Create the instance profile
             aws iam create-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role
             
             # Add the role to the instance profile
             aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role
+            
+            echo "Instance profile created successfully"
+          else
+            echo "Instance profile already exists"
+            
+            # Check if role is attached to the profile
+            PROFILE_INFO=$(aws iam get-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role)
+            if ! echo "$PROFILE_INFO" | grep -q "aws-elasticbeanstalk-ec2-role"; then
+              echo "Attaching role to existing instance profile..."
+              aws iam add-role-to-instance-profile --instance-profile-name aws-elasticbeanstalk-ec2-role --role-name aws-elasticbeanstalk-ec2-role || true
+            fi
+          fi
+          
+          # Service role
+          if ! role_exists "aws-elasticbeanstalk-service-role"; then
+            echo "Creating service role..."
             
             # Create the service role trust policy
             echo '{
@@ -90,14 +129,16 @@ jobs:
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkService
             aws iam attach-role-policy --role-name aws-elasticbeanstalk-service-role --policy-arn arn:aws:iam::aws:policy/service-role/AWSElasticBeanstalkEnhancedHealth
             
-            echo "IAM roles created successfully"
-            
-            # Wait a bit for IAM changes to propagate
-            echo "Waiting for IAM changes to propagate..."
-            sleep 20
+            echo "Service role created successfully"
           else
-            echo "IAM roles already exist"
+            echo "Service role already exists"
           fi
+          
+          echo "IAM roles verification complete"
+          
+          # Wait a bit for IAM changes to propagate if any changes were made
+          echo "Waiting for IAM changes to propagate..."
+          sleep 20
           
       - name: Login to Amazon ECR
         id: login-ecr
