@@ -30,9 +30,6 @@ COPY src/utils.py /app/src/
 COPY app/streamlit_app.py /app/app/
 COPY config.yaml /app/
 
-# Copy sample images if they exist
-COPY app/sample_images/* /app/app/sample_images/ || true
-
 # Create a startup script that generates models if they don't exist
 RUN echo '#!/bin/bash\n\
 \n\
