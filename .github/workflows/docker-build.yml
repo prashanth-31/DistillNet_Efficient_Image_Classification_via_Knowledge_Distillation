@@ -21,31 +21,48 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          lfs: true  # Enable Git LFS to pull large model files
         
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       
+      - name: Check for model files
+        id: check-models
+        run: |
+          if [ -f "app/models/teacher_model.pth" ] && [ -f "app/models/student_model.pth" ]; then
+            echo "Models exist in the repository"
+            echo "models_exist=true" >> $GITHUB_OUTPUT
+          else
+            echo "Models not found in the repository"
+            echo "models_exist=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Create minimal Dockerfile
         run: |
-          # Create a simple Dockerfile
-          cat > Dockerfile.minimal << EOF
-FROM python:3.9-slim
+          echo 'FROM python:3.9-slim
 
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \\
-    build-essential \\
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-RUN pip install --no-cache-dir streamlit
+RUN pip install --no-cache-dir streamlit torch torchvision pyyaml
 
-# Create app directory
-RUN mkdir -p /app/app
+# Create necessary directories
+RUN mkdir -p /app/models /app/src /app/app
 
-# Copy app file
-COPY app.py /app/app/
+# Copy app files
+COPY app/streamlit_app.py /app/app/
+COPY app/sample_images /app/app/sample_images/
+COPY src /app/src/
+COPY config.yaml /app/
+
+# Copy model files if they exist
+COPY app/models/ /app/models/
 
 # Set environment variables
 ENV PYTHONPATH=/app
@@ -56,21 +73,7 @@ ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
 EXPOSE 8501
 
 # Run the Streamlit app
-CMD ["streamlit", "run", "/app/app/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
-EOF
-
-          # Create a simple Streamlit app file
-          cat > app.py << EOF
-import streamlit as st
-
-st.set_page_config(page_title="DistillNet", layout="wide")
-
-st.title("DistillNet Image Classifier")
-
-st.write("This is a minimal version of the app for testing deployment.")
-
-st.success("Build successful!")
-EOF
+CMD ["streamlit", "run", "/app/app/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]' > Dockerfile.minimal
           
       - name: Build Docker image
         run: |
