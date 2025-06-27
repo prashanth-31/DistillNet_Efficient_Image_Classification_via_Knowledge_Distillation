@@ -61,7 +61,7 @@ This project implements a complete MLOps pipeline for knowledge distillation wit
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/distillnet.git
+git clone https://github.com/prashanth-31/DistillNet_Efficient_Image_Classification_via_Knowledge_Distillation.git
 cd distillnet
 ```
 
